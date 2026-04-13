@@ -3,6 +3,10 @@ use bevy::prelude::*;
 const CARD_HEIGHT: f32  = 105.0;
 const CARD_WIDTH: f32  = 75.0;
 
+
+
+
+
 #[derive(Component, Clone, Copy)]
 pub struct CardValue {
     pub value: i32,
@@ -101,6 +105,12 @@ impl CardType {
 
 }
 
+// I just want a way to query the deck entity
+#[derive(Component)]
+pub struct DeckPile;
+
+
+#[derive(Resource)]
 pub struct Deck{
     pub cards: Vec<CardType>,
 }
@@ -207,6 +217,52 @@ pub fn spawn_card(
                 }
             }
         ).id()
+}
+
+pub fn spawn_deck_entity(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
+    let deck_texture = asset_server.load("sprites/cardBack_red5.png");
+
+    commands.spawn((
+        Sprite {
+            image: deck_texture,
+            custom_size: Some(Vec2::new(CARD_WIDTH, CARD_HEIGHT)),
+            ..default()
+        },
+        Transform::from_xyz(-300.0, 0.0, 0.0), // spawn pos for the deck, we can make this a param if we want to move it around
+        DeckPile,
+    )).observe(
+        |trigger: On<Pointer<Click>>, 
+         mut commands: Commands, 
+         mut deck: ResMut<Deck>, 
+         asset_server: Res<AssetServer>,
+         mut meshes: ResMut<Assets<Mesh>>,
+         mut materials: ResMut<Assets<ColorMaterial>>| 
+        {
+            // pop from deck
+            if let Some(card_to_spawn) = deck.cards.pop() {
+                
+                
+                let spawn_position = Vec3::new(0.0, 0.0, 1.0);
+                
+                // 3. Spawn the actual card entity
+                spawn_card(
+                    &mut commands,
+                    &asset_server,
+                    card_to_spawn,
+                    spawn_position,
+                    meshes.add(Rectangle::default()),
+                    materials.add(ColorMaterial::from(Color::WHITE)), 
+                );
+                
+                println!("Spawned a card! {} cards left.", deck.cards.len());
+            } else {
+                println!("The deck is empty!");
+            }
+        }
+    );
 }
 
 // add card related sytems and plugins here
