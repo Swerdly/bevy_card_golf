@@ -118,7 +118,7 @@ pub struct Deck{
 impl Deck{
 
     //Create card array at the beginning with every possible card
-    pub fn initialize_deck(&mut self){
+    pub fn create_deck(&mut self) {
         self.cards.push(CardType::Ace);
         self.cards.push(CardType::Ace);
         self.cards.push(CardType::Ace);
@@ -211,7 +211,7 @@ pub fn spawn_card(
                 
                 if let Ok(mut transform) = transforms.get_mut(trigger.entity.entity()) {
                     
-                    
+        
                     transform.translation.x += trigger.event().delta.x;
                     transform.translation.y -= trigger.event().delta.y;
                 }
@@ -220,8 +220,9 @@ pub fn spawn_card(
 }
 
 pub fn spawn_deck_entity(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    mesh: Handle<Mesh>,
 ) {
     let deck_texture = asset_server.load("sprites/cardBack_red5.png");
 
@@ -233,19 +234,25 @@ pub fn spawn_deck_entity(
         },
         Transform::from_xyz(-300.0, 0.0, 0.0), // spawn pos for the deck, we can make this a param if we want to move it around
         DeckPile,
+        children![(
+            Mesh2d(mesh),
+        )] 
     )).observe(
         |trigger: On<Pointer<Click>>, 
          mut commands: Commands, 
          mut deck: ResMut<Deck>, 
          asset_server: Res<AssetServer>,
          mut meshes: ResMut<Assets<Mesh>>,
-         mut materials: ResMut<Assets<ColorMaterial>>| 
+         mut materials: ResMut<Assets<ColorMaterial>>|
         {
             // pop from deck
             if let Some(card_to_spawn) = deck.cards.pop() {
                 
                 
                 let spawn_position = Vec3::new(0.0, 0.0, 1.0);
+
+                let card_mesh = meshes.add(Rectangle::new(CARD_WIDTH,CARD_HEIGHT));
+                let card_material = materials.add(Color::srgb(0.2, 0.7, 0.9));
                 
                 // 3. Spawn the actual card entity
                 spawn_card(
@@ -253,8 +260,8 @@ pub fn spawn_deck_entity(
                     &asset_server,
                     card_to_spawn,
                     spawn_position,
-                    meshes.add(Rectangle::default()),
-                    materials.add(ColorMaterial::from(Color::WHITE)), 
+                    card_mesh,
+                    card_material, 
                 );
                 
                 println!("Spawned a card! {} cards left.", deck.cards.len());
