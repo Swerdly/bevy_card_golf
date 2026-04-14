@@ -25,7 +25,7 @@ pub enum CardAbility {
 
 }
 
-#[derive(Component, Clone, Copy, PartialEq, Eq)]
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CardType{
     Two,
     Three,
@@ -207,6 +207,24 @@ pub fn spawn_card(
             Transform::from_xyz(0.0, 0.0, 0.0),
         )]                
     )).observe(
+        // when you pick up a card I want it to be above everything else
+        |trigger: On<Pointer<DragStart>>, mut transforms: Query<&mut Transform>| {
+            if let Ok(mut transform) = transforms.get_mut(trigger.entity.entity()) {
+                // there's probably a smarter way of calculating this later, maybe a global set of heights to avoid collision? idk
+                transform.translation.z = 100.0; 
+                
+            }
+        }
+    ).observe(
+     
+        |trigger: On<Pointer<DragEnd>>, mut transforms: Query<&mut Transform>| {
+            if let Ok(mut transform) = transforms.get_mut(trigger.entity.entity()) {
+                // since we set the z really high we wanna lower it again when we drop it but I don't know what height we should go with
+                transform.translation.z = 1.0; 
+                
+            }
+        }
+    ).observe(
             |trigger: On<Pointer<Drag>>, mut transforms: Query<&mut Transform>| {
                 
                 if let Ok(mut transform) = transforms.get_mut(trigger.entity.entity()) {
@@ -243,7 +261,8 @@ pub fn spawn_deck_entity(
          mut deck: ResMut<Deck>, 
          asset_server: Res<AssetServer>,
          mut meshes: ResMut<Assets<Mesh>>,
-         mut materials: ResMut<Assets<ColorMaterial>>|
+         mut materials: ResMut<Assets<ColorMaterial>>,
+         mut sprites: Query<&mut Sprite>|
         {
             // pop from deck
             if let Some(card_to_spawn) = deck.cards.pop() {
@@ -254,7 +273,7 @@ pub fn spawn_deck_entity(
                 let card_mesh = meshes.add(Rectangle::new(CARD_WIDTH,CARD_HEIGHT));
                 let card_material = materials.add(Color::srgb(0.2, 0.7, 0.9));
                 
-                // 3. Spawn the actual card entity
+                // Spawn the actual card entity
                 spawn_card(
                     &mut commands,
                     &asset_server,
@@ -265,11 +284,22 @@ pub fn spawn_deck_entity(
                 );
                 
                 println!("Spawned a card! {} cards left.", deck.cards.len());
+
+                if deck.cards.is_empty() {
+                    // trigger.entity gives you the entity an observe event occurs for apparently
+                    // no clue why you have to do another .entity() call after tho
+                    if let Ok(mut sprite) = sprites.get_mut(trigger.entity.entity()) {
+                        sprite.image = asset_server.load("sprites/cardBack_blue5.png"); 
+                        println!("The deck is now empty!");
+                    }
+                }
             } else {
                 println!("The deck is empty!");
             }
         }
     );
 }
+
+
 
 // add card related sytems and plugins here
